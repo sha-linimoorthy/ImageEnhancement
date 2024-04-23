@@ -93,8 +93,7 @@ batch_size = 32
 epochs = 10
 
 # Step 1: Create Input and Target Datasets
-input_dataset = create_dataset(data_dir, batch_size)
-target_dataset = create_dataset(data_dir, batch_size)
+dataset = create_dataset(data_dir, batch_size)
 
 # Step 2: Train Denoising Autoencoder
 autoencoder = train_denoising_autoencoder(dataset, epochs, batch_size)
