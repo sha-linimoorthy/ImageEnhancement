@@ -35,7 +35,7 @@ def normalize_images(lr_image, hr_image):
 # Step 3: Resize Images
 def resize_images(hr_image, target_size):
     # Resize high-resolution image
-    hr_image_resized = cv2.resize(hr_image, target_size)
+    hr_images_resized = [resize_images(image, target_size=target_size) for image in hr_image]
     return hr_image_resized
 
 # Step 4: Histogram Equalization
@@ -104,7 +104,7 @@ def extract_patches(image, patch_size):
 # Example usage
 # Load data
 data_dir = "/content/image slice-T2"
-lr_images, hr_images = load_data(data_dir)
+lr_image, hr_image = load_data(data_dir)
 # Normalize images
 lr_image_normalized, hr_image_normalized = normalize_images(lr_image, hr_image)
 # Resize high-resolution image
