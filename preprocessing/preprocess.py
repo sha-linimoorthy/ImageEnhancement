@@ -88,7 +88,7 @@ def extract_patches(image, patch_size):
     return patches
 
 # Example usage
-data_dir = "/content/image slice-T2"
+data_dir = "../image slice-T2"
 batch_size = 32
 epochs = 10
 
