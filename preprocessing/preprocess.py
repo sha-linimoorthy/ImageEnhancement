@@ -35,7 +35,7 @@ def normalize_images(lr_image, hr_image):
 # Step 3: Resize Images
 def resize_images(hr_image, target_size):
     # Resize high-resolution image
-    hr_images_resized = [resize_images(image, target_size=target_size) for image in hr_image]
+    hr_images_resized = [cv2.resize(image, target_size) for image in hr_image]
     return hr_image_resized
 
 # Step 4: Histogram Equalization
