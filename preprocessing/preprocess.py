@@ -167,20 +167,42 @@ patched_dataset = tf.data.Dataset.from_tensor_slices(patched_images)
 
 
 
+class DiffusionBlock(tf.keras.layers.Layer):
+    def __init__(self, filters, kernel_size, name=None):
+        super(DiffusionBlock, self).__init__(name=name)
+        self.conv1 = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')
+        self.conv2 = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')
+        self.conv3 = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')
+        self.conv4 = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')
+        self.conv5 = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')
+        self.conv6 = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')
+
+    def call(self, x):
+        x1 = self.conv1(x)
+        x2 = self.conv2(tf.nn.relu(x1))
+        x3 = self.conv3(tf.nn.relu(x2))
+        x4 = self.conv4(tf.nn.relu(x3))
+        x5 = self.conv5(tf.nn.relu(x4))
+        x6 = self.conv6(tf.nn.relu(x5))
+        return x6
+
+# Step 5: Define Diffusion Probabilistic Model
 class DiffusionProbabilisticModel(tf.keras.Model):
     def __init__(self, num_blocks, filters, kernel_size):
         super(DiffusionProbabilisticModel, self).__init__()
         self.num_blocks = num_blocks
-        self.diffusion_blocks = [DiffusionBlock(filters, kernel_size, name=f"DiffusionBlock_{i}") for i in range(num_blocks)]
+        self.blocks = [DiffusionBlock(filters, kernel_size, name=f'diffusion_block_{i}') for i in range(num_blocks)]
+        self.final_conv = tf.keras.layers.Conv2D(3, kernel_size, padding='same')
 
     def call(self, x, noise_level):
+        # Apply diffusion blocks
         for i in range(self.num_blocks):
-            x = x + noise_level[:, tf.newaxis, tf.newaxis, tf.newaxis] * tf.random.normal(tf.shape(x))
-            x = self.diffusion_blocks[i](x)
+            x = self.blocks[i](x)
+            x *= noise_level  # Multiply by noise level
+
+        # Final convolution to generate output image
+        x = self.final_conv(x)
         return x
-
-import matplotlib.pyplot as plt
-
 def train_diffusion_probabilistic_model(dataset, ddpm_model, epochs):
     optimizer = tf.keras.optimizers.Adam()  # Define optimizer
     
