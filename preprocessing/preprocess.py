@@ -51,7 +51,7 @@ def train_denoising_autoencoder(dataset, epochs=10, batch_size=32):
     model = denoising_autoencoder(input_shape=(256, 256, 3))  # Adjust input shape as needed
     # Compile model
     model.compile(optimizer='adam', loss='mse')
-    
+
     # Custom training loop
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
@@ -68,7 +68,7 @@ def train_denoising_autoencoder(dataset, epochs=10, batch_size=32):
             if (step + 1) % 100 == 0:
                 print(f"Step {step + 1}, Loss: {loss.numpy():.4f}")
 
-  
+
 # Step 4: Apply Histogram Equalization
 def apply_histogram_equalization(image):
     # Apply histogram equalization
@@ -102,6 +102,7 @@ def extract_patches(image, patch_size):
     )
     return patches
 
+
 # Example usage
 data_dir = "../image slice-T2"
 batch_size = 32
@@ -124,6 +125,8 @@ for i in range(len(sample_images)):
 plt.show()
 
 
+# Create an empty list to store the patches
+patched_images = []
 for step, image in enumerate(sample_images):
     # Step 1: Apply Histogram Equalization
     image_histogram_equalized = apply_histogram_equalization(image)
@@ -138,6 +141,9 @@ for step, image in enumerate(sample_images):
     # Reshape patches for visualization
     patches = tf.reshape(patches, [-1, patch_size[0], patch_size[1], 3])  # Assuming RGB images
 
+    for patch in patches:
+        patched_images.append(patch)
+    
     # Plot the preprocessed images
     plt.figure(figsize=(15, 5))
     plt.subplot(1, 3, 1)
@@ -157,3 +163,75 @@ for step, image in enumerate(sample_images):
 
     plt.show()
 
+patched_dataset = tf.data.Dataset.from_tensor_slices(patched_images)
+
+
+
+class DiffusionProbabilisticModel(tf.keras.Model):
+    def __init__(self, num_blocks, filters, kernel_size):
+        super(DiffusionProbabilisticModel, self).__init__()
+        self.num_blocks = num_blocks
+        self.diffusion_blocks = [DiffusionBlock(filters, kernel_size, name=f"DiffusionBlock_{i}") for i in range(num_blocks)]
+
+    def call(self, x, noise_level):
+        for i in range(self.num_blocks):
+            x = x + noise_level[:, tf.newaxis, tf.newaxis, tf.newaxis] * tf.random.normal(tf.shape(x))
+            x = self.diffusion_blocks[i](x)
+        return x
+
+import matplotlib.pyplot as plt
+
+def train_diffusion_probabilistic_model(dataset, ddpm_model, epochs):
+    optimizer = tf.keras.optimizers.Adam()  # Define optimizer
+    
+    for epoch in range(epochs):
+        print(f"Epoch {epoch + 1}/{epochs}")
+        
+        for step, input_batch in enumerate(dataset):
+            noise_level = tf.random.uniform((input_batch.shape[0],), minval=0.1, maxval=0.5)  # Random noise level
+            
+            with tf.GradientTape() as tape:
+                # Forward pass
+                output_image = ddpm_model(input_batch, noise_level)
+                # Compute loss
+                loss = compute_loss(output_image, input_batch, noise_level)
+            
+            # Backpropagation
+            gradients = tape.gradient(loss, ddpm_model.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, ddpm_model.trainable_variables))
+            
+            # Print loss every few steps
+            if (step + 1) % 100 == 0:
+                print(f"Step {step + 1}, Loss: {loss.numpy():.4f}")
+
+            # Plot sample input and output images
+            if (step + 1) % 500 == 0:
+                plot_sample_images(input_batch, output_image)
+
+def compute_loss(output_image, target_image, noise_level):
+    # Define your loss function here (e.g., MSE loss)
+    loss = tf.reduce_mean(tf.square(output_image - target_image))
+    return loss
+
+def plot_sample_images(input_images, output_images):
+    num_samples = min(input_images.shape[0], output_images.shape[0], 5)  # Plot at most 5 samples
+    fig, axes = plt.subplots(num_samples, 2, figsize=(10, 3*num_samples))
+    
+    for i in range(num_samples):
+        axes[i, 0].imshow(input_images[i])
+        axes[i, 0].set_title('Input Image')
+        axes[i, 0].axis('off')
+        
+        axes[i, 1].imshow(output_images[i])
+        axes[i, 1].set_title('Output Image')
+        axes[i, 1].axis('off')
+    
+    plt.tight_layout()
+    plt.show()
+
+
+num_blocks = 6
+filters = 64
+kernel_size = (3, 3)
+ddpm_model = DiffusionProbabilisticModel(num_blocks, filters, kernel_size)
+train_diffusion_probabilistic_model(patched_dataset, ddpm_model, epochs)
